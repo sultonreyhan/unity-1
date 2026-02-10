@@ -34,25 +34,14 @@ public class PlayerMovement : MonoBehaviour
     public float cameraCrouchY = 0.4f;
 
     [Header("Slide Settings")]
-<<<<<<< Updated upstream
     public float minSpeedToSlide = 9f;        // harus sudah ngebut
-=======
-    public float minSpeedToSlide = 9f;
->>>>>>> Stashed changes
     public float slideBoostMultiplier = 1.2f; // boost awal kecil
     public float slideForce = 8f;              // dorongan kecil tiap frame
     public float slideDuration = 0.8f;         // durasi minimum
     public float slideCooldown = 1.0f;
     public float slideDrag = 0.5f;              // drag kecil saat slide (biar meluncur)
-<<<<<<< Updated upstream
     public float slideSteerStrength = 3f;   // seberapa kuat belok saat slide (kecil = berat)
     public float slideBrakeStrength = 4f;   // seberapa kuat ngerem pakai S
-=======
-
-    [Header("Slide Steering")]
-    public float slideSteerStrength = 3f;   // kekuatan belok A/D saat slide (kecil = berat)
-    public float slideBrakeStrength = 4f;   // kekuatan rem pakai S
->>>>>>> Stashed changes
 
     [Header("References")]
     public Transform orientation;
@@ -132,10 +121,7 @@ public class PlayerMovement : MonoBehaviour
 
         if (Input.GetKeyUp(crouchKey))
         {
-<<<<<<< Updated upstream
             // Kalau lagi slide, kita biarkan stop secara alami (timer/speed)
-=======
->>>>>>> Stashed changes
             // Kalau crouch biasa, coba berdiri
             if (!isSliding && isCrouching && CanStandUp())
             {
@@ -201,16 +187,9 @@ public class PlayerMovement : MonoBehaviour
 
         slideTimer -= Time.fixedDeltaTime;
 
-<<<<<<< Updated upstream
         // Arah current slide (berdasarkan velocity sekarang)
         Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
         if (flatVel.magnitude < 0.1f)
-=======
-        Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-        float speed = flatVel.magnitude;
-
-        if (speed < 0.1f)
->>>>>>> Stashed changes
         {
             StopSlide();
             return;
@@ -218,7 +197,6 @@ public class PlayerMovement : MonoBehaviour
 
         Vector3 slideDir = flatVel.normalized;
 
-<<<<<<< Updated upstream
         // === LIMITED STEERING ===
         // Input kiri/kanan
         float steerInput = horizontalInput; // A/D
@@ -234,17 +212,6 @@ public class PlayerMovement : MonoBehaviour
 
         // === BRAKE DENGAN S ===
         if (verticalInput < -0.1f) // tekan S
-=======
-        // === LIMITED STEERING (A/D) ===
-        if (Mathf.Abs(horizontalInput) > 0.01f)
-        {
-            Vector3 right = orientation.right;
-            rb.AddForce(right * horizontalInput * slideSteerStrength, ForceMode.Force);
-        }
-
-        // === BRAKE (S) ===
-        if (verticalInput < -0.1f)
->>>>>>> Stashed changes
         {
             rb.AddForce(-slideDir * slideBrakeStrength, ForceMode.Force);
         }
@@ -252,21 +219,13 @@ public class PlayerMovement : MonoBehaviour
         // Dorongan kecil ke depan biar tetap meluncur
         rb.AddForce(slideDir * slideForce, ForceMode.Force);
 
-<<<<<<< Updated upstream
         float currentSpeed = flatVel.magnitude;
-=======
->>>>>>> Stashed changes
         bool holdingKey = Input.GetKey(crouchKey);
 
         // Stop slide kalau:
         // 1) Timer habis & tidak ditahan
-<<<<<<< Updated upstream
         // 2) Speed terlalu kecil
         if ((slideTimer <= 0f && !holdingKey) || currentSpeed < minSpeedToSlide * 0.6f)
-=======
-        // 2) Speed turun di bawah ambang
-        if ((slideTimer <= 0f && !holdingKey) || speed < minSpeedToSlide * 0.6f)
->>>>>>> Stashed changes
         {
             StopSlide();
         }
@@ -297,11 +256,7 @@ public class PlayerMovement : MonoBehaviour
 
     void SpeedControl()
     {
-<<<<<<< Updated upstream
         if (isSliding) return; // jangan potong speed saat slide
-=======
-        if (isSliding) return;
->>>>>>> Stashed changes
 
         Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
         float maxSpeed = grounded ? maxGroundSpeed : maxAirSpeed;
@@ -316,11 +271,7 @@ public class PlayerMovement : MonoBehaviour
     void HandleDrag()
     {
         if (isSliding)
-<<<<<<< Updated upstream
             rb.drag = slideDrag; // drag kecil saat slide
-=======
-            rb.drag = slideDrag;
->>>>>>> Stashed changes
         else if (grounded)
             rb.drag = groundDrag;
         else
