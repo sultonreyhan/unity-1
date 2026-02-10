@@ -1,16 +1,13 @@
-using System.Collections;
-using System.Collections.Generic;
 using UnityEngine;
 
 public class PlayerCam : MonoBehaviour
 {
-    public float sensX;
-    public float sensY;
+    public float sensX = 200f;
+    public float sensY = 200f;
 
-    public Transform orientation;
+    public Transform playerBody; // isi dengan PlayerObj
 
-    float xRotation;
-    float yRotation;
+    float xRotation = 0f;
 
     private void Start()
     {
@@ -20,17 +17,16 @@ public class PlayerCam : MonoBehaviour
 
     private void Update()
     {
-        // get mouse input
         float mouseX = Input.GetAxisRaw("Mouse X") * Time.deltaTime * sensX;
         float mouseY = Input.GetAxisRaw("Mouse Y") * Time.deltaTime * sensY;
-
-        yRotation += mouseX;
 
         xRotation -= mouseY;
         xRotation = Mathf.Clamp(xRotation, -90f, 90f);
 
-        //rotate cam and orientation
-        transform.rotation = Quaternion.Euler(xRotation, yRotation, 0);
-        orientation.rotation = Quaternion.Euler(0, yRotation, 0);
+        // Pitch: kamera atas-bawah
+        transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
+
+        // Yaw: putar badan player kiri-kanan
+        playerBody.Rotate(Vector3.up * mouseX);
     }
 }
