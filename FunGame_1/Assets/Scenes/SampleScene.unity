@@ -1032,7 +1032,7 @@ Transform:
   m_GameObject: {fileID: 1253888245}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -67.29241, y: 58.226803, z: -108.12838}
+  m_LocalPosition: {x: -71.03, y: 62.34, z: -119.21}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1586,11 +1586,15 @@ MonoBehaviour:
   jumpForce: 12
   jumpCooldown: 0.25
   airMultiplier: 0.4
+  walkSpeed: 0
+  sprintSpeed: 0
   jumpKey: 32
   playerHeight: 2
   whatIsGround:
     serializedVersion: 2
     m_Bits: 1024
+  groundCheckRadius: 0.2
+  groundCheckOriginOffset: 0.1
   orientation: {fileID: 1787438827}
 --- !u!54 &1934918004
 Rigidbody:
