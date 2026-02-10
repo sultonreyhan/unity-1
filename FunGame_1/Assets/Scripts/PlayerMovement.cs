@@ -1,97 +1,142 @@
 using UnityEngine;
-using TMPro;
 
 public class PlayerMovement : MonoBehaviour
 {
     [Header("Movement")]
-    public float moveSpeed = 6f;
+    public float walkSpeed = 6f;
+    public float sprintSpeed = 9f;
+    public float crouchSpeed = 3f;
     public float groundDrag = 5f;
 
     [Header("Jumping")]
-    public float jumpForce = 5f;
+    public float jumpForce = 6.5f;     // turunkan sedikit biar nggak roket
     public float airMultiplier = 0.4f;
-    bool readyToJump = true;
+
+    [Header("Speed Limit")]
+    public float maxGroundSpeed = 9f;  // batas speed di darat
+    public float maxAirSpeed = 7f;     // batas speed di udara
 
     [Header("Keybinds")]
     public KeyCode jumpKey = KeyCode.Space;
+    public KeyCode sprintKey = KeyCode.LeftShift;
+    public KeyCode crouchKey = KeyCode.LeftControl;
 
     [Header("Ground Check")]
-    public Transform groundCheck;          // empty object di bawah kaki
-    public float groundDistance = 0.35f;
+    public Transform groundCheck;
+    public float groundDistance = 0.3f;
     public LayerMask whatIsGround;
-    bool grounded;
-    bool wasGrounded;
 
-    // Jump buffer / hold-to-jump
-    bool jumpHeld;       // true kalau Space sedang ditekan
-    bool jumpRequested;  // buffer permintaan lompat
+    [Header("Crouch Settings")]
+    public float standHeight = 2f;
+    public float crouchHeight = 1f;
+    public float cameraStandY = 0.8f;
+    public float cameraCrouchY = 0.4f;
 
+    [Header("References")]
+    public Transform orientation;
+    public Transform playerCamera;
+
+    // private
     float horizontalInput;
     float verticalInput;
 
     Vector3 moveDirection;
     Rigidbody rb;
+    CapsuleCollider capsule;
 
-    [HideInInspector] public TextMeshProUGUI text_speed;
+    bool grounded;
+    bool jumpHeld;
+    bool isCrouching;
 
-    private void Start()
+    float moveSpeed;
+
+    void Start()
     {
         rb = GetComponent<Rigidbody>();
-        rb.freezeRotation = true; // cegah miring karena tabrakan
+        rb.freezeRotation = true;
+
+        capsule = GetComponent<CapsuleCollider>();
+
+        // set awal
+        moveSpeed = walkSpeed;
+        SetStand();
     }
 
-    private void Update()
+    void Update()
     {
         // Ground check
         grounded = Physics.CheckSphere(groundCheck.position, groundDistance, whatIsGround);
 
-        // Input dasar
+        // Input
         horizontalInput = Input.GetAxisRaw("Horizontal");
         verticalInput = Input.GetAxisRaw("Vertical");
-
-        // Apakah tombol lompat sedang ditahan
         jumpHeld = Input.GetKey(jumpKey);
 
-        // Simpan request lompat (buffer)
-        if (Input.GetKeyDown(jumpKey) || jumpHeld)
-        {
-            jumpRequested = true;
-        }
-
-        // Deteksi mendarat (udara -> tanah)
-        if (grounded && !wasGrounded)
-        {
-            // Nol-kan Y velocity supaya tidak ada sisa momentum pantulan
-            rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-            readyToJump = true;
-        }
-
-        // Eksekusi lompat jika memungkinkan
-        if (jumpRequested && grounded && readyToJump)
-        {
-            DoJump();
-            jumpRequested = false;
-        }
-
-        wasGrounded = grounded;
-
-        SpeedControl();
-
-        // handle drag
-        if (grounded)
-            rb.drag = groundDrag;
-        else
-            rb.drag = 0f;
+        HandleState();
+        HandleJump();
+        HandleDrag();
     }
 
-    private void FixedUpdate()
+    void FixedUpdate()
     {
         MovePlayer();
+        SpeedControl();
     }
 
-    private void MovePlayer()
+    void HandleState()
     {
-        moveDirection = transform.forward * verticalInput + transform.right * horizontalInput;
+        // Crouch
+        if (Input.GetKey(crouchKey))
+        {
+            if (!isCrouching)
+                SetCrouch();
+
+            moveSpeed = crouchSpeed;
+        }
+        // Sprint
+        else if (grounded && Input.GetKey(sprintKey))
+        {
+            if (isCrouching)
+                SetStand();
+
+            moveSpeed = sprintSpeed;
+        }
+        // Walk
+        else
+        {
+            if (isCrouching)
+                SetStand();
+
+            moveSpeed = walkSpeed;
+        }
+    }
+
+    void HandleJump()
+    {
+        // HOLD TO JUMP: kalau Space ditahan, lompat saat grounded
+        if (grounded && jumpHeld && rb.velocity.y <= 0.01f)
+        {
+            DoJump();
+        }
+    }
+
+    void DoJump()
+    {
+        // Batasi carry speed horizontal saat lompat (biar nggak roket)
+        Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+        if (flatVel.magnitude > maxAirSpeed)
+        {
+            flatVel = flatVel.normalized * maxAirSpeed;
+        }
+
+        // Reset Y velocity supaya tidak numpuk gaya
+        rb.velocity = new Vector3(flatVel.x, 0f, flatVel.z);
+        rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+    }
+
+    void MovePlayer()
+    {
+        moveDirection = orientation.forward * verticalInput + orientation.right * horizontalInput;
 
         if (grounded)
             rb.AddForce(moveDirection.normalized * moveSpeed * 10f, ForceMode.Force);
@@ -99,26 +144,48 @@ public class PlayerMovement : MonoBehaviour
             rb.AddForce(moveDirection.normalized * moveSpeed * 10f * airMultiplier, ForceMode.Force);
     }
 
-    private void SpeedControl()
+    void SpeedControl()
     {
         Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
 
-        if (flatVel.magnitude > moveSpeed)
+        float maxSpeed = grounded ? maxGroundSpeed : maxAirSpeed;
+
+        if (flatVel.magnitude > maxSpeed)
         {
-            Vector3 limitedVel = flatVel.normalized * moveSpeed;
+            Vector3 limitedVel = flatVel.normalized * maxSpeed;
             rb.velocity = new Vector3(limitedVel.x, rb.velocity.y, limitedVel.z);
         }
-
-        if (text_speed != null)
-            text_speed.SetText("Speed: " + flatVel.magnitude.ToString("F1"));
     }
 
-    private void DoJump()
+    void HandleDrag()
     {
-        readyToJump = false;
+        if (grounded)
+            rb.drag = groundDrag;
+        else
+            rb.drag = 0f;
+    }
 
-        // reset y velocity (biar tinggi lompatan konsisten)
-        rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-        rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+    void SetCrouch()
+    {
+        isCrouching = true;
+
+        capsule.height = crouchHeight;
+        capsule.center = new Vector3(0f, crouchHeight / 2f, 0f);
+
+        Vector3 camPos = playerCamera.localPosition;
+        camPos.y = cameraCrouchY;
+        playerCamera.localPosition = camPos;
+    }
+
+    void SetStand()
+    {
+        isCrouching = false;
+
+        capsule.height = standHeight;
+        capsule.center = new Vector3(0f, standHeight / 2f, 0f);
+
+        Vector3 camPos = playerCamera.localPosition;
+        camPos.y = cameraStandY;
+        playerCamera.localPosition = camPos;
     }
 }
