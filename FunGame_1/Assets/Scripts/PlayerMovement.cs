@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
@@ -9,7 +9,7 @@ public class PlayerMovement : MonoBehaviour
     public float groundDrag = 5f;
 
     [Header("Jumping")]
-    public float jumpForce = 6.5f;     // turunkan sedikit biar nggak roket
+    public float jumpForce = 6.5f;     // atur 6–7 sesuai feel
     public float airMultiplier = 0.4f;
 
     [Header("Speed Limit")]
@@ -85,7 +85,7 @@ public class PlayerMovement : MonoBehaviour
 
     void HandleState()
     {
-        // Crouch
+        // Crouch (hold)
         if (Input.GetKey(crouchKey))
         {
             if (!isCrouching)
@@ -96,7 +96,7 @@ public class PlayerMovement : MonoBehaviour
         // Sprint
         else if (grounded && Input.GetKey(sprintKey))
         {
-            if (isCrouching)
+            if (isCrouching && CanStandUp())
                 SetStand();
 
             moveSpeed = sprintSpeed;
@@ -104,7 +104,7 @@ public class PlayerMovement : MonoBehaviour
         // Walk
         else
         {
-            if (isCrouching)
+            if (isCrouching && CanStandUp())
                 SetStand();
 
             moveSpeed = walkSpeed;
@@ -147,7 +147,6 @@ public class PlayerMovement : MonoBehaviour
     void SpeedControl()
     {
         Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
-
         float maxSpeed = grounded ? maxGroundSpeed : maxAirSpeed;
 
         if (flatVel.magnitude > maxSpeed)
@@ -164,6 +163,8 @@ public class PlayerMovement : MonoBehaviour
         else
             rb.drag = 0f;
     }
+
+    // ===== Crouch / Stand =====
 
     void SetCrouch()
     {
@@ -187,5 +188,17 @@ public class PlayerMovement : MonoBehaviour
         Vector3 camPos = playerCamera.localPosition;
         camPos.y = cameraStandY;
         playerCamera.localPosition = camPos;
+    }
+
+    bool CanStandUp()
+    {
+        // Cek apakah ada ruang tambahan untuk kembali ke tinggi berdiri
+        float extraHeight = standHeight - crouchHeight;
+
+        // Mulai dari atas kepala saat crouch
+        Vector3 origin = transform.position + Vector3.up * (crouchHeight / 2f);
+
+        // Ray ke atas: kalau kena collider environment → tidak boleh berdiri
+        return !Physics.Raycast(origin, Vector3.up, extraHeight + 0.05f, whatIsGround);
     }
 }
