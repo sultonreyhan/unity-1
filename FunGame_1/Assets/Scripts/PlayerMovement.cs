@@ -13,7 +13,7 @@ public class PlayerMovement : MonoBehaviour
     public float jumpForce;
     public float jumpCooldown;
     public float airMultiplier;
-    bool readyToJump = true;
+    bool readyToJump;
 
     [HideInInspector] public float walkSpeed;
     [HideInInspector] public float sprintSpeed;
@@ -25,10 +25,6 @@ public class PlayerMovement : MonoBehaviour
     public float playerHeight;
     public LayerMask whatIsGround;
     bool grounded;
-
-    // small radius used for a secondary ground check at the feet
-    [SerializeField] private float groundCheckRadius = 0.2f;
-    [SerializeField] private float groundCheckOriginOffset = 0.1f;
 
     public Transform orientation;
 
@@ -42,13 +38,6 @@ public class PlayerMovement : MonoBehaviour
     private void Start()
     {
         rb = GetComponent<Rigidbody>();
-        if (rb == null)
-        {
-            Debug.LogError("PlayerMovement requires a Rigidbody on the same GameObject.");
-            enabled = false;
-            return;
-        }
-
         rb.freezeRotation = true;
 
         readyToJump = true;
@@ -56,32 +45,17 @@ public class PlayerMovement : MonoBehaviour
 
     private void Update()
     {
-        // improved ground check: cast from a small offset above transform, plus a sphere check at the feet
-        float rayLength = playerHeight * 0.5f + 0.3f;
-        Vector3 rayOrigin = transform.position + Vector3.up * groundCheckOriginOffset;
-        bool rayHit = Physics.Raycast(rayOrigin, Vector3.down, rayLength + groundCheckOriginOffset, whatIsGround);
-
-        Vector3 feetPosition = transform.position + Vector3.down * (playerHeight * 0.5f);
-        bool sphereHit = Physics.CheckSphere(feetPosition, groundCheckRadius, whatIsGround);
-
-        grounded = rayHit || sphereHit;
-
-        // draw the ray and feet sphere so you can see it in the Scene view
-        Debug.DrawRay(rayOrigin, Vector3.down * (rayLength + groundCheckOriginOffset), grounded ? Color.green : Color.red);
-        Debug.DrawLine(feetPosition, feetPosition + Vector3.up * 0.01f, grounded ? Color.green : Color.red);
+        // ground check
+        grounded = Physics.Raycast(transform.position, Vector3.down, playerHeight * 0.5f + 0.3f, whatIsGround);
 
         MyInput();
         SpeedControl();
 
         // handle drag
-        rb.drag = grounded ? groundDrag : 0f;
-
-        // quick runtime info to Console (remove when done)
-        if (Input.GetKeyDown(KeyCode.F1)) // press F1 in Play mode to dump state once
-        {
-            Debug.Log($"grounded={grounded}, rayHit={rayHit}, sphereHit={sphereHit}, readyToJump={readyToJump}, rb.isKinematic={rb.isKinematic}, jumpForce={jumpForce}, rayLength={rayLength}");
-            Debug.Log($"rb.constraints={rb.constraints}, rb.velocity={rb.velocity}");
-        }
+        if (grounded)
+            rb.drag = groundDrag;
+        else
+            rb.drag = 0;
     }
 
     private void FixedUpdate()
@@ -94,29 +68,13 @@ public class PlayerMovement : MonoBehaviour
         horizontalInput = Input.GetAxisRaw("Horizontal");
         verticalInput = Input.GetAxisRaw("Vertical");
 
-        // when to jump: use GetKeyDown so one press triggers a single jump
-        if (Input.GetKeyDown(jumpKey))
+        // when to jump
+        if (Input.GetKey(jumpKey) && readyToJump && grounded)
         {
-            if (!readyToJump)
-            {
-                Debug.Log("Jump pressed but not readyToJump.");
-                return;
-            }
-
-            if (!grounded)
-            {
-                Debug.Log("Jump pressed but player not grounded.");
-                return;
-            }
-
-            if (jumpForce <= 0f)
-            {
-                Debug.LogWarning("jumpForce is <= 0. Set jumpForce to a positive value to enable jumping.");
-                return;
-            }
-
             readyToJump = false;
+
             Jump();
+
             Invoke(nameof(ResetJump), jumpCooldown);
         }
     }
@@ -131,7 +89,7 @@ public class PlayerMovement : MonoBehaviour
             rb.AddForce(moveDirection.normalized * moveSpeed * 10f, ForceMode.Force);
 
         // in air
-        else
+        else if (!grounded)
             rb.AddForce(moveDirection.normalized * moveSpeed * 10f * airMultiplier, ForceMode.Force);
     }
 
@@ -152,23 +110,10 @@ public class PlayerMovement : MonoBehaviour
         // reset y velocity
         rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
 
-        // use world up to avoid accidental local-rotation issues
-        rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        rb.AddForce(transform.up * jumpForce, ForceMode.Impulse);
     }
-
     private void ResetJump()
     {
         readyToJump = true;
-    }
-
-    // visualize the feet check sphere in the editor
-    private void OnDrawGizmosSelected()
-    {
-        if (!Application.isPlaying)
-            return;
-
-        Gizmos.color = grounded ? Color.green : Color.red;
-        Vector3 feetPosition = transform.position + Vector3.down * (playerHeight * 0.5f);
-        Gizmos.DrawWireSphere(feetPosition, groundCheckRadius);
     }
 }
