@@ -81,7 +81,7 @@ public class WallRunning : MonoBehaviour
         bool upwardsRunning = Input.GetKey(upwardsRunKey);
         bool downwardsRunning = Input.GetKey(downwardsRunKey);
 
-        // Start wallrun
+        // Start / Continue wallrun
         if ((wallLeft || wallRight) && verticalInput > 0 && AboveGround() && !exitingWall)
         {
             if (!pm.wallrunning)
@@ -89,12 +89,13 @@ public class WallRunning : MonoBehaviour
 
             wallRunTimer -= Time.deltaTime;
 
-            if (wallRunTimer <= 0)
+            if (wallRunTimer <= 0f)
             {
                 exitingWall = true;
                 exitWallTimer = exitWallTime;
             }
 
+            // Wall Jump
             if (Input.GetKeyDown(jumpKey))
                 WallJump();
         }
@@ -106,7 +107,7 @@ public class WallRunning : MonoBehaviour
                 StopWallRun();
 
             exitWallTimer -= Time.deltaTime;
-            if (exitWallTimer <= 0)
+            if (exitWallTimer <= 0f)
                 exitingWall = false;
         }
         else
@@ -124,6 +125,9 @@ public class WallRunning : MonoBehaviour
         pm.wallrunning = true;
         wallRunTimer = maxWallRunTime;
         rb.useGravity = useGravity;
+
+        // nol-kan Y supaya stabil nempel dinding
+        rb.velocity = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
     }
 
     void WallRunningMovement()
@@ -136,13 +140,13 @@ public class WallRunning : MonoBehaviour
         if ((orientation.forward - wallForward).magnitude > (orientation.forward + wallForward).magnitude)
             wallForward = -wallForward;
 
-        // dorong ke depan sepanjang tembok
+        // Dorong sepanjang tembok
         rb.AddForce(wallForward * wallRunForce, ForceMode.Force);
 
-        // nempel ke tembok
+        // Nempel ke tembok
         rb.AddForce(-wallNormal * 100f, ForceMode.Force);
 
-        // naik / turun tembok
+        // Naik / turun
         if (Input.GetKey(upwardsRunKey))
             rb.velocity = new Vector3(rb.velocity.x, wallClimbSpeed, rb.velocity.z);
         if (Input.GetKey(downwardsRunKey))
