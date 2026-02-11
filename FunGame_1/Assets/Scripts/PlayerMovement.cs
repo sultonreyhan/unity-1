@@ -12,8 +12,12 @@ public class PlayerMovement : MonoBehaviour
     public float groundDrag = 5f;
 
     [Header("Jumping")]
-    public float jumpForce = 6f;
+    public float jumpForce = 5.5f;
     public float airMultiplier = 0.4f;
+
+    [Header("Better Gravity")]
+    public float fallMultiplier = 2.8f;
+    public float lowJumpMultiplier = 2.0f;
 
     [Header("Speed Limit")]
     public float maxGroundSpeed = 9f;
@@ -42,16 +46,19 @@ public class PlayerMovement : MonoBehaviour
     [Header("UI (Optional)")]
     public TextMeshProUGUI speedText;
 
-    // State
+    // ===== STATE FLAGS (dipakai script lain) =====
     [HideInInspector] public bool grounded;
-    [HideInInspector] public bool wallrunning; // akan dipakai WallRunning
-    [HideInInspector] public bool restricted;  // dipakai WallRunning saat exit
+    [HideInInspector] public bool wallrunning;
+    [HideInInspector] public bool climbing;
+    [HideInInspector] public bool holdingLedge;
+    [HideInInspector] public bool restricted;
 
-    // Private
+    // ===== PRIVATE =====
     float horizontalInput;
     float verticalInput;
     bool jumpHeld;
     bool isCrouching;
+    bool jumpConsumed;
 
     Vector3 moveDirection;
     Rigidbody rb;
@@ -78,6 +85,10 @@ public class PlayerMovement : MonoBehaviour
         verticalInput = Input.GetAxisRaw("Vertical");
         jumpHeld = Input.GetKey(jumpKey);
 
+        // reset izin lompat saat benar-benar mendarat
+        if (grounded && rb.velocity.y <= 0.01f)
+            jumpConsumed = false;
+
         HandleState();
         HandleJump();
         HandleDrag();
@@ -86,11 +97,13 @@ public class PlayerMovement : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (!restricted)
+        if (!restricted && !holdingLedge && !climbing)
         {
             MovePlayer();
             SpeedControl();
         }
+
+        ApplyBetterGravity();
     }
 
     void HandleState()
@@ -120,15 +133,17 @@ public class PlayerMovement : MonoBehaviour
 
     void HandleJump()
     {
-        if (grounded && jumpHeld && rb.velocity.y <= 0.01f)
+        if (grounded && jumpHeld && !jumpConsumed && rb.velocity.y <= 0.01f && !climbing && !holdingLedge)
         {
             DoJump();
+            jumpConsumed = true;
         }
     }
 
     void DoJump()
     {
         Vector3 flatVel = new Vector3(rb.velocity.x, 0f, rb.velocity.z);
+
         if (flatVel.magnitude > maxAirSpeed)
             flatVel = flatVel.normalized * maxAirSpeed;
 
@@ -148,7 +163,6 @@ public class PlayerMovement : MonoBehaviour
         {
             rb.AddForce(moveDirection.normalized * moveSpeed * 10f * airMultiplier, ForceMode.Force);
         }
-        // kalau wallrunning, gerakannya di-handle WallRunning.cs
     }
 
     void SpeedControl()
@@ -165,14 +179,27 @@ public class PlayerMovement : MonoBehaviour
 
     void HandleDrag()
     {
-        if (grounded && !wallrunning)
+        if (grounded && !wallrunning && !climbing && !holdingLedge)
             rb.drag = groundDrag;
         else
             rb.drag = 0f;
     }
 
-    // ===== Crouch / Stand =====
+    void ApplyBetterGravity()
+    {
+        if (wallrunning || climbing || holdingLedge) return;
 
+        if (rb.velocity.y < 0)
+        {
+            rb.AddForce(Vector3.up * Physics.gravity.y * (fallMultiplier - 1f), ForceMode.Acceleration);
+        }
+        else if (rb.velocity.y > 0 && !Input.GetKey(jumpKey))
+        {
+            rb.AddForce(Vector3.up * Physics.gravity.y * (lowJumpMultiplier - 1f), ForceMode.Acceleration);
+        }
+    }
+
+    // ===== CROUCH =====
     void SetCrouch()
     {
         isCrouching = true;
